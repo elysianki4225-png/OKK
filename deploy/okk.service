@@ -18,7 +18,7 @@ Environment="PORT=8000"
 Environment="TRADING_MODE=paper"
 Environment="TZ_NAME=Asia/Shanghai"
 EnvironmentFile=-/opt/okk/.env
-ExecStart=/opt/okk/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+ExecStart=/opt/okk/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 --proxy-headers --forwarded-allow-ips=127.0.0.1
 Restart=always
 RestartSec=8
 # 1核1G 服务器资源保护
@@ -28,7 +28,7 @@ CPUQuota=90%
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/okk/data /var/log/caddy
+ReadWritePaths=/opt/okk/data
 PrivateTmp=true
 
 [Install]

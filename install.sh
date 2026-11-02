@@ -13,6 +13,9 @@
 # ============================================================
 set -euo pipefail
 
+# ---------- 出错不再静默：打印出错行号并退出 ----------
+trap 'rc=$?; echo ""; echo -e "\033[0;31m[错误] 安装在第 $LINENO 行失败（退出码 $rc）\033[0m"; echo -e "\033[0;31m请截图本段输出发给开发者排查\033[0m"; exit $rc' ERR
+
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 info()  { echo -e "${GREEN}[OK]${NC} $*"; }
 warn()  { echo -e "${YELLOW}[注意]${NC} $*"; }
@@ -67,12 +70,13 @@ if ! command -v caddy >/dev/null 2>&1; then
     fi
     command -v caddy >/dev/null 2>&1 || error "Caddy 安装失败"
 fi
-info "Caddy 就绪: $(caddy version 2>/dev/null | head -1)"
+CADDY_VER="$(caddy version 2>/dev/null | head -n1 || echo unknown)"
+info "Caddy 就绪: ${CADDY_VER}"
 
 # ---------- 3. 应用代码 ----------
-if [[ ! -d "$APP_DIR/.git" && ! -f "$APP_DIR/app/main.py" ]]; then
+mkdir -p "$APP_DIR"
+if [[ ! -f "$APP_DIR/app/main.py" ]]; then
     info "拉取代码 ..."
-    mkdir -p "$APP_DIR"
     if [[ -f "$(dirname "$0")/app/main.py" ]]; then
         # 从本地目录安装（脚本与代码一起分发时）
         cp -r "$(dirname "$0")/." "$APP_DIR/"
@@ -86,7 +90,7 @@ fi
 
 # ---------- 4. 运行用户 ----------
 if ! id -u okk >/dev/null 2>&1; then
-    useradd -r -m -d "$APP_DIR" -s /bin/bash okk
+    useradd -r -M -d "$APP_DIR" -s /bin/bash okk
     info "创建运行用户 okk"
 fi
 
@@ -98,9 +102,10 @@ python3 -m venv "$APP_DIR/.venv"
 info "Python 依赖完成"
 
 # ---------- 6. 配置文件 ----------
-mkdir -p "$APP_DIR/data" /var/log/caddy
+# 注意：此处生成密码严禁使用 "tr ... | head" 管道（SIGPIPE 会让脚本静默中断）
+mkdir -p "$APP_DIR/data"
 if [[ ! -f "$APP_DIR/.env" ]]; then
-    ADMIN_PW="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 14)"
+    ADMIN_PW="$(python3 -c 'import secrets; print(secrets.token_urlsafe(12))')"
     cat > "$APP_DIR/.env" <<EOF
 HOST=127.0.0.1
 PORT=8000
@@ -116,7 +121,7 @@ EOF
     info "已生成配置 $APP_DIR/.env"
 else
     warn "已存在 .env，保持不变"
-    ADMIN_PW="（见 $APP_DIR/.env 中的 ADMIN_PASSWORD）"
+    ADMIN_PW="（见 ${APP_DIR}/.env 中的 ADMIN_PASSWORD）"
 fi
 
 chown -R okk:okk "$APP_DIR"
@@ -130,11 +135,9 @@ systemctl enable okk >/dev/null 2>&1
 systemctl restart okk
 info "OKK 服务已启动（systemctl status okk 查看状态）"
 
-# ---------- 8. Caddy 配置 ----------
+# ---------- 8. Caddy 配置（日志走 journald，免文件权限坑）----------
 mkdir -p /etc/caddy
 if [[ -n "$SITE_DOMAIN" ]]; then
-    export SITE_DOMAIN CADDY_EMAIL
-    # 用环境变量渲染 Caddyfile
     sed "s|{\$SITE_DOMAIN:localhost}|${SITE_DOMAIN}|; s|{\$CADDY_EMAIL admin@example.com}|${CADDY_EMAIL}|" \
         "$APP_DIR/deploy/Caddyfile" > /etc/caddy/Caddyfile
     info "Caddy 站点: https://${SITE_DOMAIN} （SSL 自动申请，首次需 1~2 分钟）"
@@ -143,8 +146,8 @@ else
     warn "未设置 SITE_DOMAIN，Caddy 暂以 localhost 运行。"
     warn "之后请执行: SITE_DOMAIN=你的IP.nip.io bash install.sh  重新配置域名"
 fi
-systemctl enable caddy >/dev/null 2>&1
 caddy validate --config /etc/caddy/Caddyfile >/dev/null 2>&1 || warn "Caddyfile 校验有警告，继续启动"
+systemctl enable caddy >/dev/null 2>&1
 systemctl restart caddy
 info "Caddy 反向代理已启动"
 
@@ -153,23 +156,30 @@ if command -v ufw >/dev/null 2>&1; then
     ufw allow 80/tcp >/dev/null 2>&1 || true
     ufw allow 443/tcp >/dev/null 2>&1 || true
     ufw allow 22/tcp >/dev/null 2>&1 || true
-    info "防火墙已放行 22/80/443（ufw）"
+    info "防火墙已放行 22/80/443（ufw；如云厂商还有安全组请一并放行）"
 elif command -v firewall-cmd >/dev/null 2>&1; then
     firewall-cmd --permanent --add-service=http --add-service=https >/dev/null 2>&1 || true
     firewall-cmd --reload >/dev/null 2>&1 || true
-    info "防火墙已放行 80/443（firewalld）"
+    info "防火墙已放行 80/443（firewalld；如云厂商还有安全组请一并放行）"
 fi
 
-# ---------- 10. 日志轮转 ----------
-cat > /etc/logrotate.d/okk <<'EOF'
-/var/log/caddy/okk-access.log {
-    weekly
-    rotate 4
-    compress
-    missingok
-    notifempty
-}
-EOF
+# ---------- 10. 健康自检 ----------
+info "执行健康自检 ..."
+HEALTH_OK=0
+for _ in $(seq 1 20); do
+    if curl -fsS http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
+        HEALTH_OK=1
+        break
+    fi
+    sleep 1
+done
+if [[ $HEALTH_OK -eq 1 ]]; then
+    info "后端健康检查通过"
+else
+    warn "后端 20 秒内未响应，请执行: journalctl -u okk -e 查看原因"
+fi
+CADDY_ACTIVE="$(systemctl is-active caddy 2>/dev/null || echo unknown)"
+info "Caddy 状态: ${CADDY_ACTIVE}（日志: journalctl -u caddy -f）"
 
 echo ""
 echo "=========================================================="
@@ -185,6 +195,7 @@ echo ""
 echo "  常用命令:"
 echo "    systemctl status okk        # 查看运行状态"
 echo "    journalctl -u okk -f        # 查看实时日志"
+echo "    journalctl -u caddy -f      # 查看 Caddy/证书日志"
 echo "    systemctl restart okk       # 重启服务"
 echo "    nano ${APP_DIR}/.env          # 修改基础配置"
 echo ""
