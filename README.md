@@ -75,7 +75,7 @@ sudo SITE_DOMAIN=trade.example.com CADDY_EMAIL=you@example.com bash install.sh
 ```
 
 脚本自动完成：安装 Python/Caddy → 建 venv 装依赖 → 生成随机管理密码 → 注册 systemd 服务 →
-配置 Caddy 反代与 SSL → 放行防火墙 80/443 → 日志轮转。
+配置 Caddy 反代与 SSL → 放行防火墙 80/443 → 健康自检（日志统一走 journald，免手动轮转）。
 
 完成后浏览器打开 `https://你的域名`，用脚本打印的管理密码登录即可。
 
@@ -180,6 +180,9 @@ nano /opt/okk/.env            # 基础配置（改后 restart）
 ```
 
 ## ❓ FAQ
+
+**Q：安装中途报错/中断怎么办？**
+A：脚本是幂等的，修复问题后直接重跑同一条命令即可（已装组件自动跳过）。报错时会打印「失败行号」，把它发给开发者。所有日志用 `journalctl -u okk -f` / `journalctl -u caddy -f` 查看。
 
 **Q：1 核 1G 跑得动吗？**
 A：可以。uvicorn 单进程 + SQLite + 无重型前端构建，内存峰值 < 400MB，systemd 里已设 MemoryMax=680M 保护。

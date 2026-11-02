@@ -31,7 +31,7 @@ sudo SITE_DOMAIN=trade.example.com CADDY_EMAIL=你的邮箱 bash install.sh
 ```
 
 脚本会自动完成 10 步：系统依赖 → Caddy → 代码 → 运行用户 → venv → 生成随机管理密码 →
-systemd 注册并启动 → Caddyfile 渲染 → 防火墙放行 → 日志轮转。
+systemd 注册并启动 → Caddyfile 渲染 → 防火墙放行 → 健康自检（日志走 journald）。
 
 部署完成后终端会打印 **Web 管理密码**（同时保存在 `/opt/okk/.env` 的 `ADMIN_PASSWORD`）。
 
