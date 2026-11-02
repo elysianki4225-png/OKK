@@ -1,0 +1,35 @@
+# OKK AI 炒币机器人 · systemd 服务单元
+# 安装位置: /etc/systemd/system/okk.service
+# 命令: systemctl daemon-reload && systemctl enable --now okk
+
+[Unit]
+Description=OKK AI Crypto Trading Agent (FastAPI + ccxt + litellm)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=okk
+Group=okk
+WorkingDirectory=/opt/okk
+Environment="DATA_DIR=/opt/okk/data"
+Environment="HOST=127.0.0.1"
+Environment="PORT=8000"
+Environment="TRADING_MODE=paper"
+Environment="TZ_NAME=Asia/Shanghai"
+EnvironmentFile=-/opt/okk/.env
+ExecStart=/opt/okk/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=always
+RestartSec=8
+# 1核1G 服务器资源保护
+MemoryMax=680M
+CPUQuota=90%
+# 安全加固
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/okk/data /var/log/caddy
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
