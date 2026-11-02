@@ -87,11 +87,11 @@ Caddy 的自动 HTTPS 流程（零人工干预）：
 
 ```bash
 journalctl -u caddy -f                  # 看 ACME 日志
-sudo caddy validate --config /etc/caddy/Caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile   # 校验语法（会打印具体报错行）
 sudo ss -tlnp | grep -E ':80|:443'      # 确认 80/443 在监听
 ```
 
-常见失败原因：80 被占用 / 防火墙没放行 / DNS 没生效 / 频繁签发触发限速（每域名每周 50 张）。
+常见失败原因：80 被占用 / 防火墙没放行 / DNS 没生效 / 频繁签发触发限速（每域名每周 50 张）/ Caddyfile 语法错误（`caddy validate` 会指出具体原因；install.sh 校验失败时会自动降级为精简配置）。
 
 ---
 

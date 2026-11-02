@@ -137,18 +137,52 @@ info "OKK 服务已启动（systemctl status okk 查看状态）"
 
 # ---------- 8. Caddy 配置（日志走 journald，免文件权限坑）----------
 mkdir -p /etc/caddy
+render_caddyfile() {
+    if [[ -n "$SITE_DOMAIN" ]]; then
+        sed "s|{\$SITE_DOMAIN:localhost}|${SITE_DOMAIN}|; s|{\$CADDY_EMAIL admin@example.com}|${CADDY_EMAIL}|" \
+            "$APP_DIR/deploy/Caddyfile" > /etc/caddy/Caddyfile
+    else
+        cp "$APP_DIR/deploy/Caddyfile" /etc/caddy/Caddyfile
+    fi
+}
+render_caddyfile
+if ! CADDY_ERR="$(caddy validate --config /etc/caddy/Caddyfile 2>&1)"; then
+    warn "完整版 Caddyfile 校验未通过（常见于旧版 Caddy），原始报错："
+    echo "$CADDY_ERR" | sed 's/^/    /'
+    warn "自动降级为精简版 Caddyfile（仅保留最核心功能）..."
+    cat > /etc/caddy/Caddyfile <<EOF
+{
+	email ${CADDY_EMAIL}
+}
+${SITE_DOMAIN:-localhost} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+	}
+	reverse_proxy 127.0.0.1:8000
+	log
+}
+EOF
+    if ! CADDY_ERR2="$(caddy validate --config /etc/caddy/Caddyfile 2>&1)"; then
+        warn "精简版校验报错："
+        echo "$CADDY_ERR2" | sed 's/^/    /'
+        error "Caddyfile 无法通过校验，请把以上报错发给开发者"
+    fi
+fi
+systemctl enable caddy >/dev/null 2>&1
+if ! CADDY_START_ERR="$(systemctl restart caddy 2>&1)"; then
+    warn "Caddy 启动失败，最近日志："
+    journalctl -u caddy --no-pager -n 15 2>/dev/null | sed 's/^/    /' || true
+    error "Caddy 启动失败（80/443 是否被占用？云安全组是否放行？）"
+fi
 if [[ -n "$SITE_DOMAIN" ]]; then
-    sed "s|{\$SITE_DOMAIN:localhost}|${SITE_DOMAIN}|; s|{\$CADDY_EMAIL admin@example.com}|${CADDY_EMAIL}|" \
-        "$APP_DIR/deploy/Caddyfile" > /etc/caddy/Caddyfile
     info "Caddy 站点: https://${SITE_DOMAIN} （SSL 自动申请，首次需 1~2 分钟）"
 else
-    cp "$APP_DIR/deploy/Caddyfile" /etc/caddy/Caddyfile
     warn "未设置 SITE_DOMAIN，Caddy 暂以 localhost 运行。"
     warn "之后请执行: SITE_DOMAIN=你的IP.nip.io bash install.sh  重新配置域名"
 fi
-caddy validate --config /etc/caddy/Caddyfile >/dev/null 2>&1 || warn "Caddyfile 校验有警告，继续启动"
-systemctl enable caddy >/dev/null 2>&1
-systemctl restart caddy
 info "Caddy 反向代理已启动"
 
 # ---------- 9. 防火墙 ----------

@@ -21,9 +21,10 @@
 {$SITE_DOMAIN:localhost} {
 	# ---------- 反向代理到 FastAPI ----------
 	reverse_proxy 127.0.0.1:8000 {
-		# 健康检查失败自动重试
+		# 长连接复用（keepalive 后必须跟时长；连接数用 keepalive_idle_conns）
 		transport http {
-			keepalive 32
+			keepalive 32s
+			keepalive_idle_conns 32
 		}
 	}
 
