@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0e1116">
+<title>OKK · AI 炒币 Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+window.tailwind = window.tailwind || {};
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Roboto', 'Noto Sans SC', 'system-ui', 'sans-serif'] },
+      colors: {
+        primary: 'var(--m3-primary)',
+        'on-primary': 'var(--m3-on-primary)',
+        'primary-container': 'var(--m3-primary-container)',
+        'on-primary-container': 'var(--m3-on-primary-container)',
+        surface: 'var(--m3-surface)',
+        'surface-c': 'var(--m3-surface-container)',
+        'surface-ch': 'var(--m3-surface-container-high)',
+        'surface-cl': 'var(--m3-surface-container-low)',
+        'on-surface': 'var(--m3-on-surface)',
+        'surface-var': 'var(--m3-surface-variant)',
+        'on-surface-var': 'var(--m3-on-surface-variant)',
+        outline: 'var(--m3-outline)',
+        error: 'var(--m3-error)',
+        'error-container': 'var(--m3-error-container)',
+        'on-error-container': 'var(--m3-on-error-container)',
+        tertiary: 'var(--m3-tertiary)',
+        'tertiary-container': 'var(--m3-tertiary-container)',
+        'on-tertiary-container': 'var(--m3-on-tertiary-container)',
+      },
+      borderRadius: { m3: '1.75rem', 'm3-md': '1.25rem', 'm3-sm': '0.75rem' },
+    }
+  }
+}
+</script>
+<style>
+  :root {
+    --m3-primary: #4f5fc7; --m3-on-primary: #ffffff;
+    --m3-primary-container: #dfe1ff; --m3-on-primary-container: #071073;
+    --m3-surface: #faf9fd; --m3-surface-container: #eeedf4; --m3-surface-container-high: #e8e7ef;
+    --m3-surface-container-low: #f3f2f9; --m3-surface-variant: #e3e1ec; --m3-on-surface: #1a1c22;
+    --m3-on-surface-variant: #46464f; --m3-outline: #767680;
+    --m3-error: #ba1a1a; --m3-error-container: #ffdad6; --m3-on-error-container: #410002;
+    --m3-tertiary: #00696d; --m3-tertiary-container: #6ff6fa; --m3-on-tertiary-container: #002021;
+    --up: #0a8f4c; --down: #d1344c;
+  }
+  .dark {
+    --m3-primary: #bcc2ff; --m3-on-primary: #1d2a8b;
+    --m3-primary-container: #3747a6; --m3-on-primary-container: #dfe1ff;
+    --m3-surface: #111318; --m3-surface-container: #1d2024; --m3-surface-container-high: #272a2f;
+    --m3-surface-container-low: #181a1f; --m3-surface-variant: #46464f; --m3-on-surface: #e3e1e9;
+    --m3-on-surface-variant: #c7c5d0; --m3-outline: #90909a;
+    --m3-error: #ffb4ab; --m3-error-container: #93000a; --m3-on-error-container: #ffdad6;
+    --m3-tertiary: #4dd9dd; --m3-tertiary-container: #004f52; --m3-on-tertiary-container: #6ff6fa;
+    --up: #3ddc84; --down: #ff6b6b;
+  }
+  html, body { background: var(--m3-surface); color: var(--m3-on-surface); }
+  body { font-family: 'Roboto', 'Noto Sans SC', sans-serif; -webkit-tap-highlight-color: transparent; }
+  .m3-card { background: var(--m3-surface-container); border-radius: 1.5rem; }
+  .m3-card-high { background: var(--m3-surface-container-high); border-radius: 1.5rem; }
+  .m3-btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem;
+    border-radius: 9999px; padding:.65rem 1.4rem; font-weight:500; font-size:.9rem;
+    transition: all .18s ease; cursor:pointer; user-select:none; white-space:nowrap; }
+  .m3-btn:active { transform: scale(.97); }
+  .m3-btn-filled { background: var(--m3-primary); color: var(--m3-on-primary); }
+  .m3-btn-filled:hover { filter: brightness(1.08); box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+  .m3-btn-tonal { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
+  .m3-btn-tonal:hover { filter: brightness(1.05); }
+  .m3-btn-outlined { border:1px solid var(--m3-outline); color: var(--m3-primary); background:transparent; }
+  .m3-btn-outlined:hover { background: color-mix(in srgb, var(--m3-primary) 8%, transparent); }
+  .m3-btn-error { background: var(--m3-error-container); color: var(--m3-on-error-container); }
+  .m3-btn-error:hover { filter: brightness(1.05); }
+  .m3-btn-text { color: var(--m3-primary); background:transparent; }
+  .m3-btn-text:hover { background: color-mix(in srgb, var(--m3-primary) 8%, transparent); }
+  .m3-btn:disabled { opacity:.45; cursor:not-allowed; pointer-events:none; }
+  .m3-field { width:100%; background:transparent; border:1px solid var(--m3-outline); border-radius:.75rem;
+    padding:.7rem 1rem; color: var(--m3-on-surface); outline:none; transition:border .15s; font-size:.92rem; }
+  .m3-field:focus { border:2px solid var(--m3-primary); padding: calc(.7rem - 1px) calc(1rem - 1px); }
+  select.m3-field { appearance:none; background-image: linear-gradient(45deg, transparent 50%, var(--m3-on-surface-variant) 50%), linear-gradient(135deg, var(--m3-on-surface-variant) 50%, transparent 50%); background-position: right 1.1rem center, right .8rem center; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; padding-right:2.4rem; }
+  .m3-chip { display:inline-flex; align-items:center; gap:.35rem; border-radius:9999px; padding:.25rem .75rem;
+    font-size:.75rem; font-weight:500; background: var(--m3-surface-variant); color: var(--m3-on-surface-variant); }
+  .nav-item { display:flex; align-items:center; gap:.85rem; padding:.8rem 1.1rem; border-radius:9999px;
+    cursor:pointer; color: var(--m3-on-surface-variant); font-weight:500; font-size:.92rem; transition: background .15s; }
+  .nav-item:hover { background: color-mix(in srgb, var(--m3-on-surface) 7%, transparent); }
+  .nav-item.active { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
+  .nav-item i { font-size:1.35rem; }
+  .bottom-nav-item { display:flex; flex-direction:column; align-items:center; gap:.15rem; flex:1;
+    padding:.45rem 0 .55rem; color: var(--m3-on-surface-variant); font-size:.66rem; cursor:pointer; }
+  .bottom-nav-item i { font-size:1.45rem; }
+  .bottom-nav-item.active { color: var(--m3-primary); }
+  .menu { position:absolute; right:0; top:calc(100% + .5rem); min-width:13.5rem; z-index:60;
+    background: var(--m3-surface-container-high); border-radius:1.1rem; padding:.55rem;
+    box-shadow: 0 8px 28px rgba(0,0,0,.22); display:none; }
+  .menu.open { display:block; }
+  .menu-item { display:flex; align-items:center; gap:.75rem; padding:.72rem 1rem; border-radius:.85rem;
+    cursor:pointer; font-size:.88rem; color: var(--m3-on-surface); }
+  .menu-item:hover { background: color-mix(in srgb, var(--m3-on-surface) 8%, transparent); }
+  table.m3 { width:100%; border-collapse:collapse; font-size:.85rem; }
+  table.m3 th { text-align:left; padding:.75rem .9rem; color: var(--m3-on-surface-variant); font-weight:500;
+    font-size:.75rem; letter-spacing:.03em; border-bottom:1px solid color-mix(in srgb, var(--m3-outline) 35%, transparent); white-space:nowrap; }
+  table.m3 td { padding:.85rem .9rem; border-bottom:1px solid color-mix(in srgb, var(--m3-outline) 18%, transparent); white-space:nowrap; }
+  table.m3 tbody tr:hover { background: color-mix(in srgb, var(--m3-on-surface) 4%, transparent); }
+  .pos { color: var(--up); } .neg { color: var(--down); }
+  .tab-btn { padding:.55rem 1.05rem; border-radius:9999px; font-size:.86rem; font-weight:500; cursor:pointer;
+    color: var(--m3-on-surface-variant); transition:all .15s; white-space:nowrap; }
+  .tab-btn.active { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
+  .switch { position:relative; width:3.25rem; height:1.85rem; border-radius:9999px; background: var(--m3-surface-variant);
+    border:2px solid var(--m3-outline); cursor:pointer; transition:.2s; flex-shrink:0; }
+  .switch.on { background: var(--m3-primary); border-color: var(--m3-primary); }
+  .switch::after { content:''; position:absolute; width:1.15rem; height:1.15rem; border-radius:50%;
+    background: var(--m3-outline); top:50%; left:.28rem; transform:translateY(-50%); transition:.2s; }
+  .switch.on::after { left:calc(100% - 1.43rem); background: var(--m3-on-primary); }
+  .toast { position:fixed; bottom:5.5rem; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:#2c2c2c; color:#fff; padding:.85rem 1.5rem; border-radius:9999px; font-size:.88rem;
+    z-index:200; transition:all .28s ease; pointer-events:none; max-width:88vw; text-align:center; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  .kpi-num { font-size: clamp(1.35rem, 5.5vw, 2.05rem); font-weight:700; letter-spacing:-.01em; line-height:1.15; word-break:break-all; }
+  .pulse-dot { width:.55rem; height:.55rem; border-radius:50%; display:inline-block; }
+  .pulse-dot.run { background: var(--up); animation:pulse 1.6s infinite; }
+  .pulse-dot.stop { background: var(--m3-outline); }
+  .pulse-dot.pause { background:#e0a020; }
+  @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.35 } }
+  ::-webkit-scrollbar { width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb { background: var(--m3-outline); border-radius:8px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  .dlg-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.42); z-index:100; display:none; align-items:center; justify-content:center; padding:1rem; }
+  .dlg-backdrop.open { display:flex; }
+  .dlg { background: var(--m3-surface-container-high); border-radius:1.75rem; width:100%; max-width:26.5rem;
+    padding:1.6rem; max-height:88vh; overflow-y:auto; }
+  .skel { background: color-mix(in srgb, var(--m3-on-surface) 9%, transparent); border-radius:.75rem; animation:shimmer 1.4s infinite; }
+  @keyframes shimmer { 0%,100%{opacity:.55} 50%{opacity:.9} }
+</style>
+</head>
+<body class="min-h-screen antialiased">
+
+<!-- ==================== 登录 ==================== -->
+<div id="loginPage" class="fixed inset-0 z-[100] flex items-center justify-center p-5" style="background:var(--m3-surface)">
+  <div class="w-full max-w-sm">
+    <div class="flex flex-col items-center mb-8">
+      <div class="w-20 h-20 rounded-[1.6rem] flex items-center justify-center mb-4" style="background:var(--m3-primary-container)">
+        <i class="ph ph-robot text-4xl" style="color:var(--m3-on-primary-container)"></i>
+      </div>
+      <h1 class="text-2xl font-bold">OKK · AI 炒币 Agent</h1>
+      <p class="text-sm mt-1.5 text-on-surface-var">24 小时全自动合约交易机器人</p>
+    </div>
+    <div class="m3-card p-6">
+      <label class="text-xs font-medium text-on-surface-var">管理密码</label>
+      <div class="relative mt-1.5">
+        <input id="loginPassword" type="password" class="m3-field pr-11" placeholder="首次登录将设置为管理密码" autocomplete="current-password">
+        <button onclick="togglePwd('loginPassword', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-var"><i class="ph ph-eye text-xl"></i></button>
+      </div>
+      <button onclick="doLogin()" class="m3-btn m3-btn-filled w-full mt-5" style="padding:.85rem">
+        <i class="ph ph-sign-in"></i><span id="loginBtnText">登录</span>
+      </button>
+      <p class="text-[.72rem] text-on-surface-var mt-4 leading-relaxed">
+        <i class="ph ph-shield-check"></i> 密钥使用 Fernet 加密存储于本地 SQLite。首次登录的密码将设为管理密码（至少 6 位）。
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 主界面 ==================== -->
+<div id="appPage" class="hidden">
+  <!-- 顶部栏 -->
+  <header class="sticky top-0 z-40 backdrop-blur-xl border-b" style="background:color-mix(in srgb, var(--m3-surface) 82%, transparent); border-color:color-mix(in srgb, var(--m3-outline) 22%, transparent)">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style="background:var(--m3-primary-container)">
+        <i class="ph ph-robot text-xl" style="color:var(--m3-on-primary-container)"></i>
+      </div>
+      <div class="min-w-0">
+        <h1 class="font-bold text-[1.02rem] leading-tight truncate">OKK AI 炒币</h1>
+        <div class="flex items-center gap-1.5 text-[.68rem] text-on-surface-var">
+          <span id="modeChip" class="m3-chip !py-0 !px-2 !text-[.62rem]">模拟盘</span>
+          <span id="exChip" class="truncate">交易所未连接</span>
+        </div>
+      </div>
+      <div class="ml-auto flex items-center gap-1.5">
+        <button onclick="openPauseMenu(event)" id="pauseTopBtn" class="m3-btn m3-btn-outlined !px-3 !py-2 !text-[.8rem] hidden sm:inline-flex">
+          <i class="ph ph-pause"></i> 暂停
+        </button>
+        <button onclick="toggleTheme()" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition" title="切换主题">
+          <i id="themeIcon" class="ph ph-moon text-xl"></i>
+        </button>
+        <button onclick="logout()" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition" title="退出登录">
+          <i class="ph ph-sign-out text-xl"></i>
+        </button>
+      </div>
+    </div>
+    <!-- 移动端状态条 -->
+    <div class="sm:hidden px-4 pb-2.5 flex items-center gap-2 overflow-x-auto">
+      <span id="engineDotM" class="pulse-dot stop"></span>
+      <span id="engineTextM" class="text-[.72rem] text-on-surface-var whitespace-nowrap">已停止</span>
+      <span class="text-[.72rem] text-on-surface-var whitespace-nowrap">·</span>
+      <span id="modelTextM" class="text-[.72rem] text-on-surface-var whitespace-nowrap">模型: --</span>
+    </div>
+  </header>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 flex gap-6 pt-5 pb-28 lg:pb-10">
+    <!-- 侧边导航（桌面） -->
+    <aside class="hidden lg:block w-56 shrink-0">
+      <nav class="sticky top-24 flex flex-col gap-1.5">
+        <div class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard')"><i class="ph ph-squares-four"></i>仪表盘</div>
+        <div class="nav-item" data-page="positions" onclick="switchPage('positions')"><i class="ph ph-briefcase"></i>持仓</div>
+        <div class="nav-item" data-page="markets" onclick="switchPage('markets')"><i class="ph ph-chart-line-up"></i>行情</div>
+        <div class="nav-item" data-page="decisions" onclick="switchPage('decisions')"><i class="ph ph-brain"></i>AI 决策</div>
+        <div class="nav-item" data-page="logs" onclick="switchPage('logs')"><i class="ph ph-file-text"></i>日志</div>
+        <div class="nav-item" data-page="settings" onclick="switchPage('settings')"><i class="ph ph-gear"></i>设置</div>
+      </nav>
+    </aside>
+
+    <!-- 主内容 -->
+    <main class="flex-1 min-w-0">
+
+      <!-- ===== 仪表盘 ===== -->
+      <section id="page-dashboard" class="page">
+        <!-- KPI -->
+        <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+          <div class="m3-card p-4 sm:p-5">
+            <div class="flex items-center gap-2 text-on-surface-var text-[.75rem] font-medium"><i class="ph ph-wallet"></i>总资产 (USDT)</div>
+            <div class="kpi-num mt-1.5" id="kpiEquity">--</div>
+            <div class="text-[.72rem] text-on-surface-var mt-1" id="kpiUnreal">未实现: --</div>
+          </div>
+          <div class="m3-card p-4 sm:p-5">
+            <div class="flex items-center gap-2 text-on-surface-var text-[.75rem] font-medium"><i class="ph ph-trend-up"></i>今日盈亏</div>
+            <div class="kpi-num mt-1.5" id="kpiToday">--</div>
+            <div class="text-[.72rem] mt-1" id="kpiTodayPct">--</div>
+          </div>
+          <div class="m3-card p-4 sm:p-5">
+            <div class="flex items-center gap-2 text-on-surface-var text-[.75rem] font-medium"><i class="ph ph-cpu"></i>模型状态</div>
+            <div class="text-[1.05rem] font-bold mt-1.5 truncate" id="kpiModel">--</div>
+            <div class="text-[.72rem] text-on-surface-var mt-1">延迟 <span id="kpiLatency">--</span> ms</div>
+          </div>
+          <div class="m3-card p-4 sm:p-5">
+            <div class="flex items-center gap-2 text-on-surface-var text-[.75rem] font-medium"><i class="ph ph-stack"></i>当前持仓</div>
+            <div class="kpi-num mt-1.5" id="kpiPosCount">0</div>
+            <div class="text-[.72rem] text-on-surface-var mt-1">已完成周期 <span id="kpiCycles">0</span></div>
+          </div>
+        </div>
+
+        <!-- 引擎控制 -->
+        <div class="m3-card p-5 sm:p-6 mt-4">
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2.5">
+              <span id="engineDot" class="pulse-dot stop"></span>
+              <div>
+                <div class="font-semibold text-[.95rem]" id="engineStatusText">引擎已停止</div>
+                <div class="text-[.72rem] text-on-surface-var" id="engineSubText">点击启动开始 24H 自动交易</div>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 ml-auto">
+              <button onclick="engineAction('start')" class="m3-btn m3-btn-filled"><i class="ph ph-play"></i>启动</button>
+              <button onclick="engineAction('stop')" class="m3-btn m3-btn-outlined"><i class="ph ph-stop"></i>停止</button>
+              <div class="relative">
+                <button onclick="openPauseMenu(event)" class="m3-btn m3-btn-tonal"><i class="ph ph-pause"></i>暂停时长<i class="ph ph-caret-down text-xs"></i></button>
+                <div id="pauseMenu" class="menu">
+                  <div class="px-3 pt-1.5 pb-2 text-[.72rem] text-on-surface-var font-medium">选择暂停时长（类似系统更新）</div>
+                  <div class="menu-item" onclick="pauseEngine(15*60)"><i class="ph ph-timer"></i>暂停 15 分钟</div>
+                  <div class="menu-item" onclick="pauseEngine(60*60)"><i class="ph ph-clock"></i>暂停 1 小时</div>
+                  <div class="menu-item" onclick="pauseEngine(4*3600)"><i class="ph ph-clock"></i>暂停 4 小时</div>
+                  <div class="menu-item" onclick="pauseEngine(8*3600)"><i class="ph ph-moon"></i>暂停 8 小时</div>
+                  <div class="menu-item" onclick="pauseEngine(24*3600)"><i class="ph ph-calendar"></i>暂停 24 小时</div>
+                  <div class="menu-item" onclick="pauseEngine(-1)"><i class="ph ph-infinity"></i>无限期暂停</div>
+                  <div class="border-t my-1" style="border-color:color-mix(in srgb, var(--m3-outline) 25%, transparent)"></div>
+                  <div class="menu-item" onclick="resumeEngine()"><i class="ph ph-arrow-clockwise"></i>立即恢复</div>
+                </div>
+              </div>
+              <button onclick="emergencyClose()" class="m3-btn m3-btn-error"><i class="ph ph-warning"></i>一键全平</button>
+            </div>
+          </div>
+          <div id="pauseBanner" class="hidden mt-4 flex items-center gap-2.5 rounded-2xl px-4 py-3" style="background:var(--m3-tertiary-container); color:var(--m3-on-tertiary-container)">
+            <i class="ph ph-pause-circle text-xl"></i>
+            <div class="text-[.82rem] font-medium" id="pauseBannerText">引擎已暂停</div>
+            <button onclick="resumeEngine()" class="m3-btn !py-1.5 !px-4 ml-auto text-[.78rem]" style="background:var(--m3-on-tertiary-container); color:var(--m3-tertiary-container)">立即恢复</button>
+          </div>
+          <div id="errBanner" class="hidden mt-4 flex items-start gap-2.5 rounded-2xl px-4 py-3" style="background:var(--m3-error-container); color:var(--m3-on-error-container)">
+            <i class="ph ph-warning-circle text-xl"></i>
+            <div class="text-[.8rem] break-all" id="errBannerText"></div>
+          </div>
+        </div>
+
+        <!-- 净值曲线 -->
+        <div class="m3-card p-5 sm:p-6 mt-4">
+          <div class="flex items-center justify-between">
+            <h2 class="font-semibold text-[.95rem] flex items-center gap-2"><i class="ph ph-chart-line"></i>净值曲线（近 48 小时）</h2>
+            <button onclick="loadEquity()" class="m3-btn m3-btn-text !py-1.5 !px-3 !text-[.78rem]"><i class="ph ph-arrows-clockwise"></i>刷新</button>
+          </div>
+          <div class="mt-3 overflow-hidden rounded-2xl" style="background:var(--m3-surface-container-low)">
+            <svg id="equityChart" viewBox="0 0 600 180" class="w-full h-[180px]" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+
+        <!-- 模型延迟 -->
+        <div class="m3-card p-5 sm:p-6 mt-4">
+          <h2 class="font-semibold text-[.95rem] flex items-center gap-2"><i class="ph ph-gauge"></i>模型测速与故障切换</h2>
+          <div id="modelListDash" class="mt-3 flex flex-col gap-2"></div>
+        </div>
+      </section>
+
+      <!-- ===== 持仓 ===== -->
+      <section id="page-positions" class="page hidden">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold text-[1.05rem] flex items-center gap-2"><i class="ph ph-briefcase"></i>当前持仓</h2>
+          <button onclick="loadPositions()" class="m3-btn m3-btn-text !py-1.5 !px-3 !text-[.8rem]"><i class="ph ph-arrows-clockwise"></i>刷新</button>
+        </div>
+        <div class="m3-card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="m3">
+              <thead><tr><th>币种</th><th>方向</th><th>数量</th><th>开仓价</th><th>标记价</th><th>未实现盈亏</th><th>杠杆</th><th>强平价</th><th>操作</th></tr></thead>
+              <tbody id="positionsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== 行情 ===== -->
+      <section id="page-markets" class="page hidden">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h2 class="font-semibold text-[1.05rem] flex items-center gap-2"><i class="ph ph-chart-line-up"></i>AI 扫描币种（成交额 Top <span id="topNLabel">25</span>）</h2>
+            <p class="text-[.75rem] text-on-surface-var mt-0.5">AI 每轮自动巡检这些合约 + 你的持仓币种</p>
+          </div>
+          <button onclick="loadMarkets()" class="m3-btn m3-btn-text !py-1.5 !px-3 !text-[.8rem]"><i class="ph ph-arrows-clockwise"></i>刷新</button>
+        </div>
+        <div class="m3-card overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="m3">
+              <thead><tr><th>币种</th><th>最新价</th><th>24h 涨跌</th><th>24h 成交额</th></tr></thead>
+              <tbody id="marketsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== AI 决策 ===== -->
+      <section id="page-decisions" class="page hidden">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h2 class="font-semibold text-[1.05rem] flex items-center gap-2"><i class="ph ph-brain"></i>AI 决策审计</h2>
+            <p class="text-[.75rem] text-on-surface-var mt-0.5">每条指令都经过风控复核，被拒原因全程可查</p>
+          </div>
+          <button onclick="loadDecisions()" class="m3-btn m3-btn-text !py-1.5 !px-3 !text-[.8rem]"><i class="ph ph-arrows-clockwise"></i>刷新</button>
+        </div>
+        <div id="decisionsList" class="flex flex-col gap-2.5"></div>
+      </section>
+
+      <!-- ===== 日志 ===== -->
+      <section id="page-logs" class="page hidden">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold text-[1.05rem] flex items-center gap-2"><i class="ph ph-file-text"></i>系统日志</h2>
+          <button onclick="loadLogs()" class="m3-btn m3-btn-text !py-1.5 !px-3 !text-[.8rem]"><i class="ph ph-arrows-clockwise"></i>刷新</button>
+        </div>
+        <div class="m3-card p-3">
+          <div id="logsList" class="flex flex-col gap-1 font-mono text-[.74rem] max-h-[70vh] overflow-y-auto"></div>
+        </div>
+      </section>
+
+      <!-- ===== 设置 ===== -->
+      <section id="page-settings" class="page hidden">
+        <h2 class="font-semibold text-[1.05rem] flex items-center gap-2 mb-4"><i class="ph ph-gear"></i>系统设置</h2>
+
+        <!-- 交易所 -->
+        <div class="m3-card p-5 sm:p-6">
+          <h3 class="font-semibold flex items-center gap-2"><i class="ph ph-plugs-connected"></i>交易所绑定（欧易 OKX / 币安 Binance）</h3>
+          <p class="text-[.76rem] text-on-surface-var mt-1 leading-relaxed">
+            请在交易所创建 API 时：开启「读取 + 交易」权限，<b>不要开提币权限</b>，建议绑定服务器 IP 白名单。密钥使用 Fernet 加密后保存在本地 SQLite。
+          </p>
+          <div id="exBoundInfo" class="hidden mt-3 flex items-center gap-2.5 rounded-2xl px-4 py-3" style="background:var(--m3-primary-container); color:var(--m3-on-primary-container)">
+            <i class="ph ph-check-circle text-xl"></i>
+            <div class="text-[.82rem]">已绑定 <b id="exBoundName">--</b> · <span id="exBoundMask">--</span></div>
+            <button onclick="unbindExchange()" class="m3-btn !py-1.5 !px-4 ml-auto text-[.78rem]" style="background:var(--m3-on-primary-container); color:var(--m3-primary-container)">解绑</button>
+          </div>
+          <div class="grid sm:grid-cols-2 gap-3.5 mt-4">
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">交易所</label>
+              <select id="exName" class="m3-field mt-1.5">
+                <option value="okx">欧易 OKX（推荐）</option>
+                <option value="binance">币安 Binance（USDT 合约）</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">模式</label>
+              <select id="exTestnet" class="m3-field mt-1.5">
+                <option value="0">实盘账户</option>
+                <option value="1">模拟盘（Testnet / 模拟交易）</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">API Key</label>
+              <input id="exKey" class="m3-field mt-1.5" placeholder="apiKey" autocomplete="off">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">API Secret</label>
+              <input id="exSecret" type="password" class="m3-field mt-1.5" placeholder="secret" autocomplete="off">
+            </div>
+            <div id="exPassWrap">
+              <label class="text-xs font-medium text-on-surface-var">Passphrase（仅 OKX 需要）</label>
+              <input id="exPass" type="password" class="m3-field mt-1.5" placeholder="创建 API 时设置的口令" autocomplete="off">
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2.5 mt-5">
+            <button onclick="saveExchange()" class="m3-btn m3-btn-filled"><i class="ph ph-link"></i>测试并绑定</button>
+          </div>
+        </div>
+
+        <!-- AI 模型 -->
+        <div class="m3-card p-5 sm:p-6 mt-4">
+          <div class="flex items-center flex-wrap gap-2">
+            <h3 class="font-semibold flex items-center gap-2"><i class="ph ph-sparkle"></i>AI 模型（litellm 多模型 + 测速 + 故障切换）</h3>
+            <div class="flex gap-2 ml-auto">
+              <button onclick="speedTest()" class="m3-btn m3-btn-outlined !py-1.5 !px-3.5 !text-[.8rem]"><i class="ph ph-speedometer"></i>全体测速</button>
+              <button onclick="openModelDialog()" class="m3-btn m3-btn-tonal !py-1.5 !px-3.5 !text-[.8rem]"><i class="ph ph-plus"></i>添加模型</button>
+            </div>
+          </div>
+          <p class="text-[.76rem] text-on-surface-var mt-1 leading-relaxed">
+            模型串格式为 litellm 格式：<code class="px-1.5 py-0.5 rounded" style="background:var(--m3-surface-variant)">openai/gpt-4o-mini</code>、
+            <code class="px-1.5 py-0.5 rounded" style="background:var(--m3-surface-variant)">deepseek/deepseek-chat</code>、
+            <code class="px-1.5 py-0.5 rounded" style="background:var(--m3-surface-variant)">gemini/gemini-2.0-flash</code>、
+            <code class="px-1.5 py-0.5 rounded" style="background:var(--m3-surface-variant)">openai/kimi-k2</code>（自定义 base_url）等。
+            越靠前、延迟越低的模型优先使用，失败自动切换下一个。
+          </p>
+          <div id="llmList" class="mt-4 flex flex-col gap-2.5"></div>
+        </div>
+
+        <!-- 风控 -->
+        <div class="m3-card p-5 sm:p-6 mt-4">
+          <h3 class="font-semibold flex items-center gap-2"><i class="ph ph-shield-check"></i>风控参数（代码级强制，不可突破硬上限）</h3>
+          <p class="text-[.76rem] text-on-surface-var mt-1">硬上限：杠杆 ≤ 3 倍 · 单笔仓位 ≤ 20% 总资产 · 同时持仓 ≤ 5 · 必带止盈止损</p>
+          <div class="grid sm:grid-cols-2 gap-3.5 mt-4">
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">交易模式</label>
+              <select id="s_trading_mode" class="m3-field mt-1.5"><option value="paper">模拟盘（推荐先跑）</option><option value="live">实盘（真金白银）</option></select>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">最大杠杆（≤3）</label>
+              <input id="s_max_leverage" type="number" min="1" max="3" step="1" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">单笔最大仓位 %（≤20）</label>
+              <input id="s_max_position_pct" type="number" min="1" max="20" step="1" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">最大同时持仓数（≤5）</label>
+              <input id="s_max_concurrent" type="number" min="1" max="5" step="1" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">止损 %（0.3~15）</label>
+              <input id="s_stop_loss_pct" type="number" min="0.3" max="15" step="0.1" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">止盈 %</label>
+              <input id="s_take_profit_pct" type="number" min="0.5" max="30" step="0.1" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">AI 置信度阈值（0~1）</label>
+              <input id="s_min_confidence" type="number" min="0" max="1" step="0.05" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">防重锁（分钟）</label>
+              <input id="s_dedupe_minutes" type="number" min="5" max="1440" step="5" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">当日回撤熔断 %</label>
+              <input id="s_daily_loss_limit_pct" type="number" min="1" max="50" step="1" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">连亏 N 单后冷却</label>
+              <input id="s_consecutive_loss_cooldown" type="number" min="0" max="10" step="1" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">冷却时长（分钟）</label>
+              <input id="s_cooldown_minutes" type="number" min="10" max="1440" step="10" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">扫描间隔（秒，≥60 越大越省 Token）</label>
+              <input id="s_scan_interval" type="number" min="60" max="3600" step="30" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">每轮扫描币种数（Top N）</label>
+              <input id="s_scan_top_n" type="number" min="5" max="60" step="1" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">K 线根数（省 Token）</label>
+              <input id="s_kline_limit" type="number" min="60" max="300" step="10" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">AI 超时（秒）</label>
+              <input id="s_llm_timeout" type="number" min="15" max="180" step="5" class="m3-field mt-1.5">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">通知 Webhook（可选，飞书/TG/企业微信）</label>
+              <input id="s_notify_webhook" class="m3-field mt-1.5" placeholder="https://...">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">开机自动启动引擎</label>
+              <select id="s_auto_start" class="m3-field mt-1.5"><option value="0">否</option><option value="1">是</option></select>
+            </div>
+          </div>
+          <button onclick="saveSettings()" class="m3-btn m3-btn-filled mt-5"><i class="ph ph-floppy-disk"></i>保存风控设置</button>
+        </div>
+
+        <!-- 安全 -->
+        <div class="m3-card p-5 sm:p-6 mt-4 mb-4">
+          <h3 class="font-semibold flex items-center gap-2"><i class="ph ph-lock"></i>安全</h3>
+          <div class="grid sm:grid-cols-2 gap-3.5 mt-4">
+            <div>
+              <label class="text-xs font-medium text-on-surface-var">修改管理密码（留空不改）</label>
+              <input id="s_admin_password" type="password" class="m3-field mt-1.5" placeholder="新密码（≥6 位）" autocomplete="new-password">
+            </div>
+          </div>
+          <button onclick="saveSettings()" class="m3-btn m3-btn-outlined mt-4"><i class="ph ph-key"></i>保存</button>
+          <p class="text-[.72rem] text-on-surface-var mt-3 leading-relaxed">
+            安全建议：① Caddy 已自动配置 HTTPS 与安全响应头；② 服务器防火墙只开 80/443；
+            ③ 交易所 API 务必关闭提币权限并绑定 IP；④ 先跑模拟盘至少一周再切实盘。
+          </p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 底部导航（移动端） -->
+  <nav class="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t backdrop-blur-xl pb-[env(safe-area-inset-bottom)]"
+       style="background:color-mix(in srgb, var(--m3-surface-c) 92%, transparent); border-color:color-mix(in srgb, var(--m3-outline) 22%, transparent)">
+    <div class="flex">
+      <div class="bottom-nav-item active" data-page="dashboard" onclick="switchPage('dashboard')"><i class="ph ph-squares-four"></i>仪表盘</div>
+      <div class="bottom-nav-item" data-page="positions" onclick="switchPage('positions')"><i class="ph ph-briefcase"></i>持仓</div>
+      <div class="bottom-nav-item" data-page="markets" onclick="switchPage('markets')"><i class="ph ph-chart-line-up"></i>行情</div>
+      <div class="bottom-nav-item" data-page="decisions" onclick="switchPage('decisions')"><i class="ph ph-brain"></i>决策</div>
+      <div class="bottom-nav-item" data-page="settings" onclick="switchPage('settings')"><i class="ph ph-gear"></i>设置</div>
+    </div>
+  </nav>
+</div>
+
+<!-- 模型编辑弹窗 -->
+<div id="modelDialog" class="dlg-backdrop" onclick="if(event.target===this)closeModelDialog()">
+  <div class="dlg">
+    <h3 class="text-lg font-bold flex items-center gap-2"><i class="ph ph-sparkle"></i><span id="modelDlgTitle">添加 AI 模型</span></h3>
+    <div class="flex flex-col gap-3.5 mt-4">
+      <div>
+        <label class="text-xs font-medium text-on-surface-var">显示名称</label>
+        <input id="mLabel" class="m3-field mt-1.5" placeholder="如：DeepSeek 主力">
+      </div>
+      <div>
+        <label class="text-xs font-medium text-on-surface-var">litellm 模型串 *</label>
+        <input id="mModel" class="m3-field mt-1.5" placeholder="deepseek/deepseek-chat">
+      </div>
+      <div>
+        <label class="text-xs font-medium text-on-surface-var">API Key（编辑留空 = 不修改）</label>
+        <input id="mKey" type="password" class="m3-field mt-1.5" placeholder="sk-..." autocomplete="off">
+      </div>
+      <div>
+        <label class="text-xs font-medium text-on-surface-var">自定义 Base URL（可选，兼容 OpenAI 接口）</label>
+        <input id="mBase" class="m3-field mt-1.5" placeholder="https://api.deepseek.com/v1">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-medium text-on-surface-var">优先级（小=优先）</label>
+          <input id="mPriority" type="number" class="m3-field mt-1.5" value="100">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-on-surface-var">启用</label>
+          <select id="mEnabled" class="m3-field mt-1.5"><option value="1">启用</option><option value="0">停用</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="flex gap-2.5 mt-6">
+      <button onclick="closeModelDialog()" class="m3-btn m3-btn-outlined flex-1">取消</button>
+      <button onclick="saveModel()" class="m3-btn m3-btn-filled flex-1"><i class="ph ph-check"></i>保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 平仓确认弹窗 -->
+<div id="confirmDialog" class="dlg-backdrop" onclick="if(event.target===this)closeConfirm()">
+  <div class="dlg">
+    <div class="w-12 h-12 rounded-full flex items-center justify-center" style="background:var(--m3-error-container)">
+      <i class="ph ph-warning text-2xl" style="color:var(--m3-on-error-container)"></i>
+    </div>
+    <h3 class="text-lg font-bold mt-3" id="confirmTitle">确认操作</h3>
+    <p class="text-sm text-on-surface-var mt-2 leading-relaxed" id="confirmText"></p>
+    <div class="flex gap-2.5 mt-6">
+      <button onclick="closeConfirm()" class="m3-btn m3-btn-outlined flex-1">取消</button>
+      <button id="confirmOk" class="m3-btn m3-btn-error flex-1">确认</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

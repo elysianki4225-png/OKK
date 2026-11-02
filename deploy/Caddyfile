@@ -1,0 +1,65 @@
+# ============================================================
+# OKK AI 炒币机器人 · Caddy 反向代理配置
+#
+# 用法 1（有域名）：      SITE_DOMAIN=trade.example.com ./install.sh
+# 用法 2（纯 IP + nip.io）：SITE_DOMAIN=203.0.113.5.nip.io ./install.sh
+#   （把 203.0.113.5 换成你服务器的真实公网 IP）
+#
+# Caddy 会自动向 Let's Encrypt 申请并续期 SSL 证书（全自动，含 nip.io 泛解析）。
+# 手动部署时将本文件放到 /etc/caddy/Caddyfile，然后: systemctl reload caddy
+# ============================================================
+
+{
+	# 全局选项
+	email {$CADDY_EMAIL admin@example.com}
+	# 启用 OCSP stapling 与 HTTP/3（可选）
+	servers {
+		protocols h1 h2 h2c h3
+	}
+}
+
+{$SITE_DOMAIN:localhost} {
+	# ---------- 反向代理到 FastAPI ----------
+	reverse_proxy 127.0.0.1:8000 {
+		# 健康检查失败自动重试
+		transport http {
+			keepalive 32
+		}
+	}
+
+	# ---------- 压缩 ----------
+	encode gzip zstd
+
+	# ---------- 安全响应头 ----------
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+	}
+
+	# ---------- 静态资源缓存 ----------
+	@static path /static/*
+	header @static Cache-Control "public, max-age=86400"
+
+	# ---------- 日志 ----------
+	log {
+		output file /var/log/caddy/okk-access.log {
+			roll_size 10mb
+			roll_keep 5
+		}
+	}
+
+	# ---------- 请求体限制（防滥用） ----------
+	request_body {
+		max_size 2MB
+	}
+}
+
+# ============================================================
+# 可选：同时用裸 IP:80 访问（无证书，自动 301 到上面的 HTTPS 站点）
+# :80 {
+# 	redir https://{$SITE_DOMAIN}{uri} 301
+# }
+# ============================================================
